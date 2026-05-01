@@ -15,6 +15,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set repository name to lowercase
+        run: echo "REPO_LC=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Tailscale
         uses: tailscale/github-action@v2
         with:
@@ -33,8 +36,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ghcr.io/${{ env.REPO_LC }}:latest
+            ghcr.io/${{ env.REPO_LC }}:${{ github.sha }}
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -48,7 +51,7 @@ jobs:
             echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
             # Descargar la última imagen
-            docker pull ghcr.io/${{ github.repository }}/storage-service:latest
+            docker pull ghcr.io/${{ env.REPO_LC }}:latest
 
             # Ejecutar migraciones de base de datos
             docker run --rm \
@@ -57,7 +60,7 @@ jobs:
               -e CASSANDRA_KEYSPACE="${{ secrets.CASSANDRA_KEYSPACE }}" \
               -e CASSANDRA_USERNAME="${{ secrets.CASSANDRA_USERNAME }}" \
               -e CASSANDRA_PASSWORD="${{ secrets.CASSANDRA_PASSWORD }}" \
-              ghcr.io/${{ github.repository }}/storage-service:latest \
+              ghcr.io/${{ env.REPO_LC }}:latest \
               node scripts/run-cassandra-migrations.mjs
 
             # Detener y eliminar contenedor existente
@@ -75,7 +78,7 @@ jobs:
               -e CASSANDRA_USERNAME="${{ secrets.CASSANDRA_USERNAME }}" \
               -e CASSANDRA_PASSWORD="${{ secrets.CASSANDRA_PASSWORD }}" \
               --restart unless-stopped \
-              ghcr.io/${{ github.repository }}/storage-service:latest
+              ghcr.io/${{ env.REPO_LC }}:latest
 
             # Limpiar imágenes antiguas
             docker image prune -f
