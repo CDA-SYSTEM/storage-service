@@ -3,6 +3,8 @@ name: Deploy NestJS Docker
 on:
   push:
     branches: [ "develop", "feature/config-deploy" ]
+  pull_request:
+    branches: [ "develop" ]
 
 permissions:
   packages: write
