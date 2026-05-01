@@ -2,7 +2,7 @@ name: Deploy NestJS
 
 on:
   push:
-    branches: [ "develop", "feature/config-deploy" ] # Se activa al hacer push a develop
+    branches: [  ] # Se desactiva 
 
 jobs:
   deploy:
