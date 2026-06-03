@@ -82,6 +82,16 @@ export class StorageController {
     return this.storageService.uploadFile(file);
   }
 
+  @Get('stats')
+  @ApiOperation({ summary: 'Estadísticas de almacenamiento para admin' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Estadísticas del storage',
+  })
+  async getStats() {
+    return this.storageService.getStats();
+  }
+
   @Get('files')
   @ApiOperation({ summary: 'Listar archivos activos (no eliminados)' })
   @ApiResponse({

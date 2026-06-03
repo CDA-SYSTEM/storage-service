@@ -108,4 +108,60 @@ export class StorageRepository {
       { prepare: true },
     );
   }
+
+  async getStats(): Promise<{
+    totalFiles: number;
+    activeFiles: number;
+    totalSizeBytes: number;
+    filesByMimetype: Array<{ mimetype: string; count: number }>;
+    recentUploads: number;
+  }> {
+    const result = await this.cassandraClient.execute(
+      `SELECT id, mimetype, file_data, created_at, deleted_at FROM files ALLOW FILTERING`,
+      [],
+      { prepare: true },
+    );
+
+    const rows = result.rows as any[];
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    let totalFiles = 0;
+    let activeFiles = 0;
+    let totalSizeBytes = 0;
+    const mimetypeMap = new Map<string, number>();
+    let recentUploads = 0;
+
+    for (const row of rows) {
+      totalFiles++;
+      if (!row.deleted_at) {
+        activeFiles++;
+      }
+      if (row.file_data) {
+        totalSizeBytes += Buffer.from(row.file_data).length;
+      }
+      const mime = row.mimetype || 'unknown';
+      mimetypeMap.set(mime, (mimetypeMap.get(mime) || 0) + 1);
+      if (row.created_at) {
+        const created = new Date(row.created_at);
+        if (created >= todayStart) {
+          recentUploads++;
+        }
+      }
+    }
+
+    const filesByMimetype = Array.from(mimetypeMap.entries()).map(([mimetype, count]) => ({
+      mimetype,
+      count,
+    }));
+
+    return {
+      totalFiles,
+      activeFiles,
+      totalSizeBytes,
+      filesByMimetype,
+      recentUploads,
+    };
+  }
 }

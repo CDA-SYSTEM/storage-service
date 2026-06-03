@@ -89,4 +89,8 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
 
     await this.storageRepository.softDelete(id, new Date());
   }
+
+  async getStats() {
+    return this.storageRepository.getStats();
+  }
 }
