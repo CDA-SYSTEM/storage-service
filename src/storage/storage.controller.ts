@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Delete,
   Get,
@@ -19,7 +20,6 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { ParseFilePipeBuilder } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import type { Response } from 'express';
@@ -27,8 +27,9 @@ import { Readable } from 'node:stream';
 import { ApiErrorResponseDto } from '../publics/dto/api-error-response.dto';
 import { FileEntity } from './entities/file.entity';
 import { UploadFileResponseDto } from './dto/upload-file-response.dto';
-import { fileValidationOptions } from './utils/file-validation.util';
 import { StorageService } from './storage.service';
+import { MimeTypeValidationPipe } from './pipes/mime-type-validation.pipe';
+import { fileValidationOptions } from './utils/file-validation.util';
 
 @ApiTags('storage')
 @Controller('storage')
@@ -66,19 +67,14 @@ export class StorageController {
     }),
   )
   async upload(
-    @UploadedFile(
-      new ParseFilePipeBuilder()
-        .addFileTypeValidator({
-          fileType: new RegExp(fileValidationOptions.allowedMimeTypes.join('|')),
-        })
-        .addMaxSizeValidator({ maxSize: fileValidationOptions.maxSize })
-        .build({
-          fileIsRequired: true,
-          errorHttpStatusCode: HttpStatus.BAD_REQUEST,
-        }),
-    )
+    @UploadedFile(new MimeTypeValidationPipe())
     file: Express.Multer.File,
   ): Promise<UploadFileResponseDto> {
+    if (file.size > fileValidationOptions.maxSize) {
+      throw new BadRequestException(
+        `File size exceeds the maximum allowed size of ${fileValidationOptions.maxSize} bytes`,
+      );
+    }
     return this.storageService.uploadFile(file);
   }
 
