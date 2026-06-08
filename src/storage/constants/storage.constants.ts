@@ -2,6 +2,7 @@ export const STORAGE_ALLOWED_MIME_TYPES = [
   'image/jpeg',
   'image/png',
   'application/pdf',
+  'application/octet-stream',
   'text/plain',
 ] as const;
 
