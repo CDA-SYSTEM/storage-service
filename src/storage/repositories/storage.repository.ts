@@ -10,6 +10,7 @@ type FileRow = {
   original_name: string;
   mimetype: string;
   file_data: Buffer;
+  folder_id: types.Uuid | null;
   created_at: Date;
   deleted_at: Date | null;
 };
@@ -26,12 +27,13 @@ export class StorageRepository {
     original_name: string;
     mimetype: string;
     file_data: Buffer;
+    folder_id?: string | null;
     created_at: Date;
   }): Promise<void> {
     await this.cassandraClient.execute(
       `
-      INSERT INTO files (id, filename, original_name, mimetype, file_data, created_at, deleted_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO files (id, filename, original_name, mimetype, file_data, folder_id, created_at, deleted_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         types.Uuid.fromString(file.id),
@@ -39,6 +41,7 @@ export class StorageRepository {
         file.original_name,
         file.mimetype,
         file.file_data,
+        file.folder_id ? types.Uuid.fromString(file.folder_id) : null,
         file.created_at,
         null,
       ],
@@ -49,7 +52,7 @@ export class StorageRepository {
   async findById(id: string): Promise<(FileEntity & { file_data: Buffer }) | null> {
     const result = await this.cassandraClient.execute(
       `
-      SELECT id, filename, original_name, mimetype, file_data, created_at, deleted_at
+      SELECT id, filename, original_name, mimetype, file_data, folder_id, created_at, deleted_at
       FROM files
       WHERE id = ?
       `,
@@ -68,6 +71,7 @@ export class StorageRepository {
       original_name: row.original_name,
       mimetype: row.mimetype,
       file_data: row.file_data,
+      folder_id: row.folder_id?.toString() ?? null,
       created_at: row.created_at,
       deleted_at: row.deleted_at,
     };
@@ -76,7 +80,7 @@ export class StorageRepository {
   async listActiveFiles(limit: number): Promise<FileEntity[]> {
     const result = await this.cassandraClient.execute(
       `
-      SELECT id, filename, original_name, mimetype, created_at, deleted_at
+      SELECT id, filename, original_name, mimetype, folder_id, created_at, deleted_at
       FROM files
       LIMIT ?
       `,
@@ -92,6 +96,7 @@ export class StorageRepository {
         filename: row.filename,
         original_name: row.original_name,
         mimetype: row.mimetype,
+        folder_id: row.folder_id?.toString() ?? null,
         created_at: row.created_at,
         deleted_at: row.deleted_at,
       }));
@@ -107,6 +112,29 @@ export class StorageRepository {
       [deletedAt, types.Uuid.fromString(id)],
       { prepare: true },
     );
+  }
+
+  async findByFolderId(folderId: string): Promise<FileEntity[]> {
+    const result = await this.cassandraClient.execute(
+      `SELECT id, filename, original_name, mimetype, folder_id, created_at, deleted_at
+       FROM files
+       WHERE folder_id = ?`,
+      [types.Uuid.fromString(folderId)],
+      { prepare: true },
+    );
+
+    return result.rows
+      .map((row) => row as unknown as Omit<FileRow, 'file_data'>)
+      .filter((row) => !row.deleted_at)
+      .map((row) => ({
+        id: row.id.toString(),
+        filename: row.filename,
+        original_name: row.original_name,
+        mimetype: row.mimetype,
+        folder_id: row.folder_id?.toString() ?? null,
+        created_at: row.created_at,
+        deleted_at: row.deleted_at,
+      }));
   }
 
   async getStats(): Promise<{

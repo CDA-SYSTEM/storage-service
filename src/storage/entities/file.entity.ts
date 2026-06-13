@@ -13,6 +13,9 @@ export class FileEntity {
   @ApiProperty({ example: 'application/pdf' })
   mimetype!: string;
 
+  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000', nullable: true, required: false })
+  folder_id?: string | null;
+
   @ApiProperty({ example: '2026-03-30T12:00:00.000Z' })
   created_at!: Date;
 
