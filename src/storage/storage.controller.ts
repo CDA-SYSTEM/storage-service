@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Delete,
   Get,
@@ -26,7 +27,10 @@ import type { Response } from 'express';
 import { Readable } from 'node:stream';
 import { ApiErrorResponseDto } from '../publics/dto/api-error-response.dto';
 import { FileEntity } from './entities/file.entity';
+import { FolderEntity } from './entities/folder.entity';
 import { UploadFileResponseDto } from './dto/upload-file-response.dto';
+import { CreateFolderDto } from './dto/create-folder.dto';
+import { FolderResponseDto } from './dto/folder-response.dto';
 import { StorageService } from './storage.service';
 import { MimeTypeValidationPipe } from './pipes/mime-type-validation.pipe';
 import { fileValidationOptions } from './utils/file-validation.util';
@@ -46,6 +50,11 @@ export class StorageController {
         file: {
           type: 'string',
           format: 'binary',
+        },
+        folder_id: {
+          type: 'string',
+          format: 'uuid',
+          description: 'ID de la carpeta (opcional)',
         },
       },
       required: ['file'],
@@ -69,13 +78,56 @@ export class StorageController {
   async upload(
     @UploadedFile(new MimeTypeValidationPipe())
     file: Express.Multer.File,
+    @Body('folder_id') folderId?: string,
   ): Promise<UploadFileResponseDto> {
     if (file.size > fileValidationOptions.maxSize) {
       throw new BadRequestException(
         `File size exceeds the maximum allowed size of ${fileValidationOptions.maxSize} bytes`,
       );
     }
-    return this.storageService.uploadFile(file);
+    return this.storageService.uploadFile(file, folderId);
+  }
+
+  @Post('folders')
+  @ApiOperation({ summary: 'Crear una carpeta' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Carpeta creada exitosamente',
+    type: FolderResponseDto,
+  })
+  async createFolder(@Body() dto: CreateFolderDto): Promise<FolderResponseDto> {
+    return this.storageService.createFolder(dto.name);
+  }
+
+  @Get('folders')
+  @ApiOperation({ summary: 'Listar todas las carpetas' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Listado de carpetas',
+    type: FolderEntity,
+    isArray: true,
+  })
+  async listFolders(): Promise<FolderEntity[]> {
+    return this.storageService.listFolders();
+  }
+
+  @Get('folders/:id/files')
+  @ApiOperation({ summary: 'Listar archivos por carpeta' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Archivos de la carpeta',
+    type: FileEntity,
+    isArray: true,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Carpeta no encontrada',
+    type: ApiErrorResponseDto,
+  })
+  async listFilesByFolder(
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<FileEntity[]> {
+    return this.storageService.listFilesByFolder(id);
   }
 
   @Get('stats')
