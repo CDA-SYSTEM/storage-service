@@ -28,14 +28,14 @@ export class FolderRepository {
     );
   }
 
-  async findAll(): Promise<FolderEntity[]> {
+  async findAll(search?: string): Promise<FolderEntity[]> {
     const result = await this.cassandraClient.execute(
       `SELECT id, name, created_at FROM folders`,
       [],
       { prepare: true },
     );
 
-    return result.rows.map((row) => {
+    let folders = result.rows.map((row) => {
       const r = row as unknown as FolderRow;
       return {
         id: r.id.toString(),
@@ -43,6 +43,13 @@ export class FolderRepository {
         created_at: r.created_at,
       };
     });
+
+    if (search) {
+      const q = search.toLowerCase();
+      folders = folders.filter((f) => f.name.toLowerCase().includes(q));
+    }
+
+    return folders;
   }
 
   async findById(id: string): Promise<FolderEntity | null> {

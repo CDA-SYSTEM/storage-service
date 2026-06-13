@@ -93,8 +93,8 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  async listFolders(): Promise<FolderEntity[]> {
-    return this.folderRepository.findAll();
+  async listFolders(search?: string): Promise<FolderEntity[]> {
+    return this.folderRepository.findAll(search);
   }
 
   async listFilesByFolder(folderId: string): Promise<FileEntity[]> {

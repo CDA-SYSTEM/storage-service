@@ -107,8 +107,8 @@ export class StorageController {
     type: FolderEntity,
     isArray: true,
   })
-  async listFolders(): Promise<FolderEntity[]> {
-    return this.storageService.listFolders();
+  async listFolders(@Query('search') search?: string): Promise<FolderEntity[]> {
+    return this.storageService.listFolders(search);
   }
 
   @Get('folders/:id/files')
