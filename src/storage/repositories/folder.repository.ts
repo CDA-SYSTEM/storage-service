@@ -61,17 +61,30 @@ export class FolderRepository {
   }
 
   async findByParent(parentId: string | null): Promise<FolderEntity[]> {
-    const result = parentId === null
-      ? await this.cassandraClient.execute(
-          `SELECT id, name, created_at, parent_id FROM folders WHERE parent_id IS NULL ALLOW FILTERING`,
-          [],
-          { prepare: true },
-        )
-      : await this.cassandraClient.execute(
-          `SELECT id, name, created_at, parent_id FROM folders WHERE parent_id = ? ALLOW FILTERING`,
-          [types.Uuid.fromString(parentId)],
-          { prepare: true },
-        );
+    if (parentId === null) {
+      const result = await this.cassandraClient.execute(
+        `SELECT id, name, created_at, parent_id FROM folders`,
+        [],
+        { prepare: true },
+      );
+      return result.rows
+        .map((row) => {
+          const r = row as unknown as FolderRow;
+          return {
+            id: r.id.toString(),
+            name: r.name,
+            created_at: r.created_at,
+            parent_id: r.parent_id?.toString() ?? null,
+          };
+        })
+        .filter((f) => f.parent_id === null);
+    }
+
+    const result = await this.cassandraClient.execute(
+      `SELECT id, name, created_at, parent_id FROM folders WHERE parent_id = ? ALLOW FILTERING`,
+      [types.Uuid.fromString(parentId)],
+      { prepare: true },
+    );
 
     return result.rows.map((row) => {
       const r = row as unknown as FolderRow;
