@@ -9,4 +9,7 @@ export class FolderEntity {
 
   @ApiProperty({ example: '2026-03-30T12:00:00.000Z' })
   created_at!: Date;
+
+  @ApiProperty({ example: null, required: false })
+  parent_id?: string | null;
 }

@@ -8,6 +8,7 @@ type FolderRow = {
   id: types.Uuid;
   name: string;
   created_at: Date;
+  parent_id: types.Uuid | null;
 };
 
 @Injectable()
@@ -20,17 +21,23 @@ export class FolderRepository {
     id: string;
     name: string;
     created_at: Date;
+    parent_id?: string | null;
   }): Promise<void> {
     await this.cassandraClient.execute(
-      `INSERT INTO folders (id, name, created_at) VALUES (?, ?, ?)`,
-      [types.Uuid.fromString(folder.id), folder.name, folder.created_at],
+      `INSERT INTO folders (id, name, created_at, parent_id) VALUES (?, ?, ?, ?)`,
+      [
+        types.Uuid.fromString(folder.id),
+        folder.name,
+        folder.created_at,
+        folder.parent_id ? types.Uuid.fromString(folder.parent_id) : null,
+      ],
       { prepare: true },
     );
   }
 
   async findAll(search?: string): Promise<FolderEntity[]> {
     const result = await this.cassandraClient.execute(
-      `SELECT id, name, created_at FROM folders`,
+      `SELECT id, name, created_at, parent_id FROM folders`,
       [],
       { prepare: true },
     );
@@ -41,6 +48,7 @@ export class FolderRepository {
         id: r.id.toString(),
         name: r.name,
         created_at: r.created_at,
+        parent_id: r.parent_id?.toString() ?? null,
       };
     });
 
@@ -52,9 +60,33 @@ export class FolderRepository {
     return folders;
   }
 
+  async findByParent(parentId: string | null): Promise<FolderEntity[]> {
+    const result = parentId === null
+      ? await this.cassandraClient.execute(
+          `SELECT id, name, created_at, parent_id FROM folders WHERE parent_id = null ALLOW FILTERING`,
+          [],
+          { prepare: true },
+        )
+      : await this.cassandraClient.execute(
+          `SELECT id, name, created_at, parent_id FROM folders WHERE parent_id = ? ALLOW FILTERING`,
+          [types.Uuid.fromString(parentId)],
+          { prepare: true },
+        );
+
+    return result.rows.map((row) => {
+      const r = row as unknown as FolderRow;
+      return {
+        id: r.id.toString(),
+        name: r.name,
+        created_at: r.created_at,
+        parent_id: r.parent_id?.toString() ?? null,
+      };
+    });
+  }
+
   async findById(id: string): Promise<FolderEntity | null> {
     const result = await this.cassandraClient.execute(
-      `SELECT id, name, created_at FROM folders WHERE id = ?`,
+      `SELECT id, name, created_at, parent_id FROM folders WHERE id = ?`,
       [types.Uuid.fromString(id)],
       { prepare: true },
     );
@@ -66,6 +98,7 @@ export class FolderRepository {
       id: row.id.toString(),
       name: row.name,
       created_at: row.created_at,
+      parent_id: row.parent_id?.toString() ?? null,
     };
   }
 

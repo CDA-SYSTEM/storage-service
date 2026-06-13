@@ -96,7 +96,7 @@ export class StorageController {
     type: FolderResponseDto,
   })
   async createFolder(@Body() dto: CreateFolderDto): Promise<FolderResponseDto> {
-    return this.storageService.createFolder(dto.name);
+    return this.storageService.createFolder(dto.name, dto.parent_id);
   }
 
   @Get('folders')
@@ -109,6 +109,31 @@ export class StorageController {
   })
   async listFolders(@Query('search') search?: string): Promise<FolderEntity[]> {
     return this.storageService.listFolders(search);
+  }
+
+  @Get('folders/root/contents')
+  @ApiOperation({ summary: 'Listar carpetas y archivos raíz (sin padre)' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Contenido de la raíz',
+  })
+  async listRootContents() {
+    return this.storageService.getFolderContents(null);
+  }
+
+  @Get('folders/:id/contents')
+  @ApiOperation({ summary: 'Listar subcarpetas y archivos de una carpeta' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Contenido de la carpeta',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Carpeta no encontrada',
+    type: ApiErrorResponseDto,
+  })
+  async listFolderContents(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.storageService.getFolderContents(id);
   }
 
   @Delete('folders/:id')

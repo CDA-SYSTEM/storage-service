@@ -82,14 +82,21 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  async createFolder(name: string): Promise<FolderResponseDto> {
+  async createFolder(name: string, parentId?: string | null): Promise<FolderResponseDto> {
     const id = randomUUID();
     const createdAt = new Date();
 
-    await this.folderRepository.create({ id, name, created_at: createdAt });
+    if (parentId) {
+      const parent = await this.folderRepository.findById(parentId);
+      if (!parent) {
+        throw new NotFoundException('Parent folder not found');
+      }
+    }
+
+    await this.folderRepository.create({ id, name, created_at: createdAt, parent_id: parentId ?? null });
 
     return {
-      folder: { id, name, created_at: createdAt },
+      folder: { id, name, created_at: createdAt, parent_id: parentId ?? null },
     };
   }
 
@@ -97,6 +104,13 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
     const folder = await this.folderRepository.findById(id);
     if (!folder) {
       throw new NotFoundException('Folder not found');
+    }
+
+    const children = await this.folderRepository.findByParent(id);
+    if (children.length > 0) {
+      throw new BadRequestException(
+        `Cannot delete folder with ${children.length} subfolder(s). Remove them first.`,
+      );
     }
 
     const files = await this.storageRepository.findByFolderId(id);
@@ -109,15 +123,20 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
     await this.folderRepository.deleteById(id);
   }
 
-  async createFolder(name: string): Promise<FolderResponseDto> {
-    const id = randomUUID();
-    const createdAt = new Date();
+  async getFolderContents(parentId: string | null): Promise<Array<FolderEntity | FileEntity & { type: 'folder' | 'file' }>> {
+    const folders = await this.folderRepository.findByParent(parentId);
+    const files = parentId
+      ? await this.storageRepository.findByFolderId(parentId)
+      : [];
 
-    await this.folderRepository.create({ id, name, created_at: createdAt });
+    const result: Array<any> = [
+      ...folders.map((f) => ({ ...f, type: 'folder' as const })),
+      ...files.map((f) => ({ ...f, type: 'file' as const })),
+    ];
 
-    return {
-      folder: { id, name, created_at: createdAt },
-    };
+    result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    return result;
   }
 
   async listFolders(search?: string): Promise<FolderEntity[]> {
