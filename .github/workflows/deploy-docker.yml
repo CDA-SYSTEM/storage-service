@@ -65,6 +65,16 @@ jobs:
               ghcr.io/${{ env.REPO_LC }}:latest \
               node scripts/run-cassandra-migrations.mjs
 
+            # Ejecutar seed de carpetas
+            docker run --rm \
+              -e CASSANDRA_CONTACT_POINTS="${{ secrets.CASSANDRA_CONTACT_POINTS }}" \
+              -e CASSANDRA_LOCAL_DATA_CENTER="${{ secrets.CASSANDRA_LOCAL_DATA_CENTER }}" \
+              -e CASSANDRA_KEYSPACE="${{ secrets.CASSANDRA_KEYSPACE }}" \
+              -e CASSANDRA_USERNAME="${{ secrets.CASSANDRA_USERNAME }}" \
+              -e CASSANDRA_PASSWORD="${{ secrets.CASSANDRA_PASSWORD }}" \
+              ghcr.io/${{ env.REPO_LC }}:latest \
+              node scripts/seed-folders.mjs
+
             # Detener y eliminar contenedor existente
             docker stop storage-service || true
             docker rm storage-service || true
@@ -79,6 +89,9 @@ jobs:
               -e CASSANDRA_KEYSPACE="${{ secrets.CASSANDRA_KEYSPACE }}" \
               -e CASSANDRA_USERNAME="${{ secrets.CASSANDRA_USERNAME }}" \
               -e CASSANDRA_PASSWORD="${{ secrets.CASSANDRA_PASSWORD }}" \
+              -e SWAGGER_USER="${{ secrets.SWAGGER_USER }}" \
+              -e SWAGGER_PASS="${{ secrets.SWAGGER_PASS }}" \
+              -e API_KEY="${{ secrets.API_KEY }}" \
               --restart unless-stopped \
               ghcr.io/${{ env.REPO_LC }}:latest
 
