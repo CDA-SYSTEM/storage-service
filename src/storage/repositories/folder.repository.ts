@@ -68,4 +68,12 @@ export class FolderRepository {
       created_at: row.created_at,
     };
   }
+
+  async deleteById(id: string): Promise<void> {
+    await this.cassandraClient.execute(
+      `DELETE FROM folders WHERE id = ?`,
+      [types.Uuid.fromString(id)],
+      { prepare: true },
+    );
+  }
 }

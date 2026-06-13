@@ -111,6 +111,27 @@ export class StorageController {
     return this.storageService.listFolders(search);
   }
 
+  @Delete('folders/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Eliminar carpeta (solo si está vacía)' })
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: 'Carpeta eliminada',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Carpeta no encontrada',
+    type: ApiErrorResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'La carpeta contiene archivos activos',
+    type: ApiErrorResponseDto,
+  })
+  async deleteFolder(@Param('id', new ParseUUIDPipe()) id: string): Promise<void> {
+    await this.storageService.deleteFolder(id);
+  }
+
   @Get('folders/:id/files')
   @ApiOperation({ summary: 'Listar archivos por carpeta' })
   @ApiResponse({

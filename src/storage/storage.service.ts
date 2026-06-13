@@ -93,6 +93,33 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  async deleteFolder(id: string): Promise<void> {
+    const folder = await this.folderRepository.findById(id);
+    if (!folder) {
+      throw new NotFoundException('Folder not found');
+    }
+
+    const files = await this.storageRepository.findByFolderId(id);
+    if (files.length > 0) {
+      throw new BadRequestException(
+        `Cannot delete folder with ${files.length} active file(s). Remove or move files first.`,
+      );
+    }
+
+    await this.folderRepository.deleteById(id);
+  }
+
+  async createFolder(name: string): Promise<FolderResponseDto> {
+    const id = randomUUID();
+    const createdAt = new Date();
+
+    await this.folderRepository.create({ id, name, created_at: createdAt });
+
+    return {
+      folder: { id, name, created_at: createdAt },
+    };
+  }
+
   async listFolders(search?: string): Promise<FolderEntity[]> {
     return this.folderRepository.findAll(search);
   }
