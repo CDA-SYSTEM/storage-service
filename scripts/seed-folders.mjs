@@ -39,6 +39,7 @@ const FOLDERS = [
   { name: 'contratos' },
   { name: 'fotos' },
   { name: 'documentos' },
+  { name: '/'}
 ];
 
 async function run() {
