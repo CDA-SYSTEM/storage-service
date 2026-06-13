@@ -63,7 +63,7 @@ export class FolderRepository {
   async findByParent(parentId: string | null): Promise<FolderEntity[]> {
     const result = parentId === null
       ? await this.cassandraClient.execute(
-          `SELECT id, name, created_at, parent_id FROM folders WHERE parent_id = null ALLOW FILTERING`,
+          `SELECT id, name, created_at, parent_id FROM folders WHERE parent_id IS NULL ALLOW FILTERING`,
           [],
           { prepare: true },
         )
