@@ -31,6 +31,16 @@
 $ npm install
 ```
 
+## Database
+
+```bash
+# run migrations (Cassandra)
+$ npm run db:migrate
+
+# seed initial folders (facturas, contratos, fotos, documentos)
+$ npm run db:seed
+```
+
 ## Compile and run the project
 
 ```bash
