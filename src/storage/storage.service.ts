@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -11,13 +12,17 @@ import { Client } from 'cassandra-driver';
 import { Inject } from '@nestjs/common';
 import { CASSANDRA_CLIENT_TOKEN } from './constants/storage.constants';
 import { FileEntity } from './entities/file.entity';
+import { FolderEntity } from './entities/folder.entity';
 import { StorageRepository } from './repositories/storage.repository';
+import { FolderRepository } from './repositories/folder.repository';
 import { UploadFileResponseDto } from './dto/upload-file-response.dto';
+import { FolderResponseDto } from './dto/folder-response.dto';
 
 @Injectable()
 export class StorageService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly storageRepository: StorageRepository,
+    private readonly folderRepository: FolderRepository,
     @Inject(CASSANDRA_CLIENT_TOKEN) private readonly cassandraClient: Client,
   ) {}
 
@@ -35,11 +40,21 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
     await this.cassandraClient.shutdown();
   }
 
-  async uploadFile(file: Express.Multer.File): Promise<UploadFileResponseDto> {
+  async uploadFile(
+    file: Express.Multer.File,
+    folderId?: string,
+  ): Promise<UploadFileResponseDto> {
     const id = randomUUID();
     const fileExtension = extname(file.originalname);
     const filename = `${id}${fileExtension}`;
     const createdAt = new Date();
+
+    if (folderId) {
+      const folder = await this.folderRepository.findById(folderId);
+      if (!folder) {
+        throw new NotFoundException('Folder not found');
+      }
+    }
 
     await this.storageRepository.create({
       id,
@@ -47,6 +62,7 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
       original_name: file.originalname,
       mimetype: file.mimetype,
       file_data: file.buffer,
+      folder_id: folderId ?? null,
       created_at: createdAt,
     });
 
@@ -55,6 +71,7 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
       filename,
       original_name: file.originalname,
       mimetype: file.mimetype,
+      folder_id: folderId ?? null,
       created_at: createdAt,
       deleted_at: null,
     };
@@ -63,6 +80,29 @@ export class StorageService implements OnModuleInit, OnModuleDestroy {
       file: metadata,
       accessUrl: `/storage/files/${id}`,
     };
+  }
+
+  async createFolder(name: string): Promise<FolderResponseDto> {
+    const id = randomUUID();
+    const createdAt = new Date();
+
+    await this.folderRepository.create({ id, name, created_at: createdAt });
+
+    return {
+      folder: { id, name, created_at: createdAt },
+    };
+  }
+
+  async listFolders(): Promise<FolderEntity[]> {
+    return this.folderRepository.findAll();
+  }
+
+  async listFilesByFolder(folderId: string): Promise<FileEntity[]> {
+    const folder = await this.folderRepository.findById(folderId);
+    if (!folder) {
+      throw new NotFoundException('Folder not found');
+    }
+    return this.storageRepository.findByFolderId(folderId);
   }
 
   async getFileById(id: string): Promise<FileEntity & { file_data: Buffer }> {
